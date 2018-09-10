@@ -7,7 +7,9 @@ import java.util.Map.Entry;
 public class Poupador extends ProgramaPoupador {
 	private static final int POUPADOR = 100;
 	private static final int LADRAO = 200;
-	static final int POSITION = 2;
+	private static final int POSITION = 2;
+	private static final int VISION_MATRIX_SIZE = 5;
+	private static final int SMELL_MATRIX_SIZE = 3;
 
 	private int[][] map;
 	private Point currentPosition;
@@ -15,6 +17,22 @@ public class Poupador extends ProgramaPoupador {
 	private int MAP_N = 30;
 	private boolean firstIteration = true;
 	private Hashtable<Integer, Point> agentsMap;
+	private int[][] safeZone;
+	
+	private void instanciation() {
+		map = new int[MAP_M][MAP_N];
+		undiscoverMap();
+		firstIteration = false;
+		safeZone = new int[3][3];
+	}
+	
+	private void resetSafeZone() {
+		for (int i = 0; i < safeZone.length; i++) {
+			for (int j = 0; j < safeZone[i].length; j++) {
+				map[i][j] = 0;
+			}
+		}
+	}
 
 	private void undiscoverMap() {
 		for (int i = 0; i < map.length; i++) {
@@ -24,7 +42,10 @@ public class Poupador extends ProgramaPoupador {
 		}
 	}
 
-	private void fillMap(int[][] sensor, int offset, int m, int n) {
+	private void fillVisualMap(int[][] sensor) {
+		int offset = VISION_MATRIX_SIZE/2;
+		int m, n = m = VISION_MATRIX_SIZE;
+		
 		for (int i = this.currentPosition.y - offset, count_i = 0; count_i < m; count_i++, i++) {
 			for (int j = this.currentPosition.x - offset, count_j = 0; count_j < n; count_j++, j++) {
 				int cellValue = sensor[count_i][count_j];
@@ -57,38 +78,29 @@ public class Poupador extends ProgramaPoupador {
 	}
 
 	public int acao() {
-		try {
-
-			if (firstIteration) {
-				map = new int[MAP_M][MAP_N];
-				undiscoverMap();
-				firstIteration = false;
-			} else {
-				clearAgentsFromMap();
-			}
-
-			agentsMap = new Hashtable<Integer, Point>();
-
-			currentPosition = sensor.getPosicao();
-
-			int[] visao = sensor.getVisaoIdentificacao();
-			fillMap(Util.getSensorArrayAsMatrix(visao, 5), 2, 5, 5);
-
-			Util.printMatrix(map);
-
-//		int [] olfato = sensor.getAmbienteOlfatoPoupador();
-
-			Util.printSensorArrayAsMatrix(visao, 5);
-			System.out.println();
-//		Util.printMatrix(Util.getSensorArrayAsMatrix(visao,5));
-			System.out.println();
-
-//		Util.printArrayAsMatrix(olfato, 3);
-//		System.out.println();
-
-		} catch (Exception e) {
-			System.out.println(e);
+		if (firstIteration) {
+			instanciation();
+			
+		} else {
+			clearAgentsFromMap();
 		}
+
+		agentsMap = new Hashtable<Integer, Point>();
+
+		currentPosition = sensor.getPosicao();
+
+		int[] visao = sensor.getVisaoIdentificacao();
+		fillVisualMap(Util.getSensorArrayAsMatrix(visao, VISION_MATRIX_SIZE, POSITION));
+
+		Util.printMatrix(map);
+
+		int [] olfato = sensor.getAmbienteOlfatoPoupador();
+		
+//		fillSafeZone(Util.getSensorArrayAsMatrix(olfato, SMELL_MATRIX_SIZE, 0));
+
+		Util.printSensorArrayAsMatrix(visao, VISION_MATRIX_SIZE);
+		System.out.println();
+		
 		return (int) (Math.random() * 5);
 	}
 
@@ -127,7 +139,7 @@ class Util {
 		}
 	}
 
-	public static int[][] getSensorArrayAsMatrix(int[] array, int m) {
+	public static int[][] getSensorArrayAsMatrix(int[] array, int m, int centerValue) {
 		int n = (array.length + 1) / m;
 		int[][] matrix = new int[m][n];
 
@@ -140,7 +152,7 @@ class Util {
 			for (int j = 0; j < n; j++) {
 				if (i_center == i && j_center == j) {
 					offset = 1;
-					matrix[i][j] = Poupador.POSITION;
+					matrix[i][j] = centerValue;
 					continue;
 				}
 
