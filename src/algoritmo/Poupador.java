@@ -24,18 +24,18 @@ public class Poupador extends ProgramaPoupador {
 		}
 	}
 
-	private void fillMap(Point point, int[][] sensor, int offset, int m, int n) {
-		for (int i = point.y - offset, count_i = 0; count_i < m; count_i++, i++) {
-			for (int j = point.x - offset, count_j = 0; count_j < n; count_j++, j++) {
+	private void fillMap(int[][] sensor, int offset, int m, int n) {
+		for (int i = this.currentPosition.y - offset, count_i = 0; count_i < m; count_i++, i++) {
+			for (int j = this.currentPosition.x - offset, count_j = 0; count_j < n; count_j++, j++) {
 				int cellValue = sensor[count_i][count_j];
 
 				if (i >= 0 && j >= 0 && i < MAP_M && j < MAP_N && cellValue != -2) {
-					this.map[i][j] = sensor[count_i][count_j];
+					this.map[i][j] = cellValue;
 
 					if (cellValue >= LADRAO) {
-						agentsMap.put(LADRAO, new Point(j, i));
-					} else if (cellValue >= POUPADOR && cellValue < LADRAO) {
-						agentsMap.put(POUPADOR, new Point(j, i));
+						agentsMap.put(cellValue, new Point(j, i));
+					} else if (cellValue >= POUPADOR) {
+						agentsMap.put(cellValue, new Point(j, i));
 					}
 				}
 			}
@@ -50,8 +50,10 @@ public class Poupador extends ProgramaPoupador {
 				this.map[point.y][point.x] = 0;
 			}
 		}
-
-		this.map[currentPosition.y][currentPosition.x] = 0;
+		
+		if(currentPosition != null) {
+			this.map[currentPosition.y][currentPosition.x] = 0;			
+		}
 	}
 
 	public int acao() {
@@ -70,7 +72,7 @@ public class Poupador extends ProgramaPoupador {
 			currentPosition = sensor.getPosicao();
 
 			int[] visao = sensor.getVisaoIdentificacao();
-			fillMap(sensor.getPosicao(), Util.getSensorArrayAsMatrix(visao, 5), 2, 5, 5);
+			fillMap(Util.getSensorArrayAsMatrix(visao, 5), 2, 5, 5);
 
 			Util.printMatrix(map);
 
