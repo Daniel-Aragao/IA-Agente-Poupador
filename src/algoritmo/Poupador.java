@@ -176,15 +176,44 @@ public class Poupador extends ProgramaPoupador {
 	}
 
 	private float calcExplorationWeight(State s) {
-		// TODO Auto-generated method stub
+	
 		return 0;
 	}
 
 	private float calcSmellWeight(State s) {
-		// TODO Auto-generated method stub
+		double weight = 0;
+		
+		
+		
 		return 0;
 	}
+	
+	private float getCostAction(State s) {
 
+		Point position = null;
+		
+		switch(s.getAction()) {
+			case UP:
+				position = new Point(2, 1);
+				break;
+				
+			case DOWN:
+				position = new Point(2, 0);			
+				break;
+				
+			case RIGHT:
+				position = new Point(0, 2);		
+				break;
+				
+			case LEFT:
+				position = new Point(1, 2);		
+				break;
+			default:
+				break;
+		}
+		return 0;
+	}
+	
 	private double calcVisionWeight(State s) {
 		double weight = 0;
 		
