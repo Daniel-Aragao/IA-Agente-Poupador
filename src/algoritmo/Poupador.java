@@ -13,8 +13,13 @@ public class Poupador extends ProgramaPoupador {
 	private static final int SMELL_MATRIX_SIZE = 3;
 	private static final int MAP_M = 30;
 	private static final int MAP_N = 30;
+	private static final int POWER_UP_PRICE = 5;
 
 	private int[][] map;
+	private int[][] vision;
+	private int[][] smell;
+	private boolean escaping = false;
+	private int money;
 	private Point currentPosition;
 	private boolean firstIteration = true;
 	private Hashtable<Integer, Point> agentsMap;
@@ -74,8 +79,26 @@ public class Poupador extends ProgramaPoupador {
 
 		currentPosition = sensor.getPosicao();
 		
-		int[] visao = sensor.getVisaoIdentificacao();
-		fillVisualMap(Util.getSensorArrayAsMatrix(visao, VISION_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue()));		
+		vision = Util.getSensorArrayAsMatrix(sensor.getVisaoIdentificacao(), VISION_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
+		smell = Util.getSensorArrayAsMatrix(sensor.getAmbienteOlfatoPoupador(), SMELL_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
+		
+		money = sensor.getNumeroDeMoedas();
+		
+		fillVisualMap(vision);		
+		
+		escaping = seeingThief();
+	}
+	
+	private boolean seeingThief() {
+		for (Entry<Integer, Point> tuple : agentsMap.entrySet()) {
+			Integer agentKey = tuple.getKey();
+			
+			if(agentKey >= EMapCode.THIEF.getValue()) {
+				return true;
+			}			
+		}
+		
+		return false;
 	}
 	
 	private void fillVisualMap(int[][] sensor) {
@@ -113,6 +136,10 @@ public class Poupador extends ProgramaPoupador {
 		}
 	}
 	
+	private boolean shouldIBuyThePowerUp() {
+		return escaping && money > POWER_UP_PRICE;
+	}
+	
 	private List<State> getStateSuccessors(Point point){
 		List<State> validStates = new ArrayList<State>();
 		
@@ -125,7 +152,7 @@ public class Poupador extends ProgramaPoupador {
 		
 		for(State s : nextStates) {
 			if(Util.isInMap(map, s.getPosition())) {
-				if(Util.isWalkable(map, s.getPosition())) {
+				if(Util.isWalkable(map, s.getPosition(), shouldIBuyThePowerUp())) {
 					validStates.add(s);
 				}
 			}
@@ -134,13 +161,121 @@ public class Poupador extends ProgramaPoupador {
 		return validStates;
 	}
 	
-	private float getStateWeight(State s) {
+	private double getStateWeight(State s) {
+		double weight = 0;
+		
+		weight = calcVisionWeight(s);
+		weight += calcSmellWeight(s);
+		weight += calcExplorationWeight(s);
+		
+		return weight;
+	}
+
+	private float calcExplorationWeight(State s) {
 		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	private float calcSmellWeight(State s) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	private double calcVisionWeight(State s) {
+		double weight = 0;
+		
+		int[][] actionMatrix = Util.cutVision(vision, s.getAction());
+		
+		for(int i =0; i < actionMatrix.length; i++) {
+			for(int j = 0; j < actionMatrix[i].length; j++) {
+				int cell = actionMatrix[i][j];
+				
+				if(cell > EMapCode.THIEF.getValue()){
+					cell = EMapCode.THIEF.getValue();
+				}else if(cell > EMapCode.SAVER.getValue()) {
+					cell = EMapCode.SAVER.getValue();
+				}
+				
+				double distance = Util.getDistance(currentPosition, j, i) + 1;
+				
+				if(distance == 0) {
+					weight += identifyWeightByCode(cell);
+				}else {
+					weight += identifyWeightByCode(cell) / distance;					
+				}				
+			}
+		}		
+		
+		return weight;
+	}
+	
+	private float identifyWeightByCode(int cell) {
+		EMapCode mapObject = EMapCode.fromValue(cell);
+		
+		if(mapObject == null) System.out.println(cell);
+		
+		if(mapObject.getValue() == EMapCode.BANK.getValue()) {
+			return EGameObjectWeight.BANK.getValue();
+			
+		}else if(mapObject.getValue() == EMapCode.COIN.getValue()) {
+			return EGameObjectWeight.COIN.getValue();
+			
+		}else if(mapObject.getValue() == EMapCode.NO_VISION.getValue()) {
+			return EGameObjectWeight.NO_VISION.getValue();
+			
+		}else if(mapObject.getValue() == EMapCode.OUT_MAP.getValue()) {
+			return EGameObjectWeight.OUT_MAP.getValue();
+			
+		}else if(mapObject.getValue() == EMapCode.POWER_UP.getValue()) {
+			if(shouldIBuyThePowerUp()) {
+				return EGameObjectWeight.POWER_UP.getValue();				
+			}
+			
+		}else if(mapObject.getValue() == EMapCode.THIEF.getValue()) {
+			return EGameObjectWeight.THIEF.getValue();
+			
+		}else if(mapObject.getValue() == EMapCode.WALL.getValue()) {
+			return EGameObjectWeight.WALL.getValue();
+			
+		}
+		
 		return 0;
 	}
 }
 
-class Util {
+class Util {	
+	public static double getDistance(Point a, int x, int y) {
+		return getDistance(a, new Point(x,y));
+	}
+	
+	public static double getDistance(Point a, Point b) {
+		return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
+	}
+	
+	public static int[][] cutVision(int [][] vision, EAction action){
+		int m = (action.getValue() == EAction.UP.getValue() || EAction.DOWN.getValue() == action.getValue()) ? 2 : 5;
+		int n = (m == 5) ? 2 : 5;		
+		
+		// for up, left, right i starts in 0
+		int i = action.getValue() == EAction.DOWN.getValue() ? 3 : 0;
+		// for up, left, down j starts in 0
+		int j = action.getValue() == EAction.RIGHT.getValue() ? 3 : 0;
+		
+		return cutMatrix(vision, m, n, i ,j);
+	}
+	
+	public static int[][] cutMatrix(int[][] matrix, int m, int n, int i, int j){
+		int [][] newMatrix = new int [m][n];
+		
+		for(int count_i = 0; count_i < m; count_i++, i++) {
+			for(int count_j = 0, variable_j = j; count_j < n; count_j++, variable_j++) {
+				newMatrix[count_i][count_j] = matrix[i][variable_j];
+			}
+		}
+		
+		return newMatrix;
+	}
+	
 	public static boolean isInMap(int [][] map, Point point) {
 		return isInMap(map, point.y, point.x);
 	}
@@ -150,16 +285,16 @@ class Util {
 				y >= 0 && x >= 0;
 	}
 	
-	public static boolean isWalkable(int [][] map, Point point) {
-		return isWalkable(map, point.y, point.x);
+	public static boolean isWalkable(int [][] map, Point point, boolean payment) {
+		return isWalkable(map, point.y, point.x, payment);
 	}
 	
-	public static boolean isWalkable(int [][] map, int y, int x) {
+	public static boolean isWalkable(int [][] map, int y, int x, boolean payment) {
 		int cell = map[y][x];
 		
 		return 	cell == EMapCode.FLOOR.getValue() 	 ||
 				cell == EMapCode.COIN.getValue() 	 ||
-				cell == EMapCode.POWER_UP.getValue() ||
+				(payment && cell == EMapCode.POWER_UP.getValue()) ||
 				cell == EMapCode.BANK.getValue();
 	}
 	
@@ -236,7 +371,7 @@ class GameObject{
 class State{
 	private EAction action;
 	private Point position;
-	private float weight = 0;
+	private double weight = 0;
 	
 	public State(EAction action, Point position) {
 		this.action = action;
@@ -247,14 +382,14 @@ class State{
 
 	public Point getPosition() { return position; }
 
-	public float getWeight() { return weight; }
-	public void setWeight(float weight) { this.weight = weight; }
+	public double getWeight() { return weight; }
+	public void setWeight(double weight) { this.weight = weight; }
 
 	public static Comparator<State> comparator() {
 		return new Comparator<State>() {			
 			public int compare(State state0, State state1) {
-				float weight0 = state0.getWeight();
-				float weight1 = state1.getWeight();
+				double weight0 = state0.getWeight();
+				double weight1 = state1.getWeight();
 				
 				return weight0 > weight1 ? 1 : weight0 < weight1 ? -1 : 0;
 			}
@@ -269,6 +404,16 @@ enum EAction{
 	
 	EAction(int value){
 		this.value = value;
+	}
+	
+	public static EAction fromValue(int id) {
+		for(EAction e : EAction.values()){
+			if(e.value == id){
+				return e;
+			}
+		}
+		
+		return null;
 	}
 	
 	public int getValue() {
@@ -295,18 +440,47 @@ enum EMapCode{
 		this.value = value;
 	}
 	
+	public static EMapCode fromValue(int id) {
+		for(EMapCode e : EMapCode.values()){
+			if(e.value == id){
+				return e;
+			}
+		}
+		
+		return null;
+	}
+	
 	public int getValue() {
 		return value;
 	}
 }
 
 enum EGameObjectWeight{
-	COIN(5), POWER_UP(2), THIEF(-200), SAVER(0);
+	COIN			(10), 
+	POWER_UP		(50), 
+	THIEF			(-200), 
+	SAVER			(0), 
+	BANK			(200),
+	OUT_MAP			(-1),  
+	NO_VISION		(-2), 
+	WALL			(-5);
+	
+//	UNKNOW_CELL		(-5), 
 	
 	private float value;
 	
 	EGameObjectWeight(float value){
 		this.value = value;
+	}
+	
+	public static EGameObjectWeight fromValue(int id) {
+		for(EGameObjectWeight e : EGameObjectWeight.values()){
+			if(e.value == id){
+				return e;
+			}
+		}
+		
+		return null;
 	}
 	
 	public float getValue() {

@@ -72,188 +72,190 @@ public class Ladrao extends ProgramaLadrao {
 	}
 
 	public int acao() {
-		p = sensor.getPosicao();
 
-		pesos[p.y][p.x] += 1;
-
-		chance = 0;
-		outraAcao = 0;
-		chanceJuntar = 0;
-		explorar = 0;
-		cima = 0;
-		baixo = 0;
-		esquerda = 0;
-		direita = 0;
-		total = 1;
-		
-		boolean juntar = false;
-		for(int i = 0 ; i < sensor.getVisaoIdentificacao().length; i ++) {
-			if(sensor.getVisaoIdentificacao()[i] != 200 && sensor.getVisaoIdentificacao()[i] != 210 && 
-					sensor.getVisaoIdentificacao()[i] != 220 && sensor.getVisaoIdentificacao()[i] != 230) {
-				juntar = true;
-				break;
-			}
-		}
-		
-		if(banco.x != -1 && banco.y != -1) {
-			double sub1 = banco.getX() - p.getX();
-			double sub2 = banco.getY() - p.getY();
-			if(sub1 == 0) {
-				sub1 = 1;
-			}
-			
-			if(sub2 == 0) {
-				sub2 = 1;
-			}
-			
-			chanceBancoX = 1 - (1/Math.abs(sub1));
-			chanceBancoY = 1 - (1/Math.abs(sub2));
-			chanceBancoSoma = chanceBancoX + chanceBancoY;
-		}
-
-		int cont = 0;
-		for (int i = -2; i <= 2; i++) {
-			for (int j = -2; j <= 2; j++) {
-				try {
-					if (i == 0 && j == 0) {
-
-					} else {
-						conhecimento[p.y + i][p.x + j] = sensor.getVisaoIdentificacao()[cont];
-						
-						if(sensor.getVisaoIdentificacao()[cont] == 3) {
-							banco.y = p.y + i;
-							banco.x = p.x + j;
-						}
-
-						if (sensor.getVisaoIdentificacao()[cont] == 100
-								|| sensor.getVisaoIdentificacao()[cont] == 110) {
-							outraAcao += 2;
-						}
-
-						cont++;
-					}
-				} catch (Exception e) {
-
-				}
-			}
-		}
-		
-		
-
-		for (int i = 0; i < sensor.getAmbienteOlfatoPoupador().length; i++) {
-			if (sensor.getAmbienteOlfatoPoupador()[i] == 1) {
-				outraAcao += 1.8;
-			}
-
-			if (sensor.getAmbienteOlfatoPoupador()[i] == 2) {
-				outraAcao += 1.6;
-			}
-
-			if (sensor.getAmbienteOlfatoPoupador()[i] == 3) {
-				outraAcao += 1.2;
-			}
-
-			if (sensor.getAmbienteOlfatoPoupador()[i] == 4) {
-				outraAcao += 1;
-			}
-			
-			if (sensor.getAmbienteOlfatoPoupador()[i] == 5) {
-				outraAcao += 0.8;
-			}
-		}
-
-		if (outraAcao > 3) {
-			outraAcao = 2.95;
-		}
-
-		explorar = 1 - outraAcao;
-		
-		if (moedas < sensor.getNumeroDeMoedas()) {
-			cooldown = cooldownValue;
-			moedas = sensor.getNumeroDeMoedas();
-		}
-
-		if (posAnterior.x != p.x || posAnterior.y != p.y) {
-			posAnterior.x = p.x;
-			posAnterior.y = p.y;
-		} else {
-			if (movimentoAnterior != 0) {
-				switch (movimentoAnterior) {
-				case 1:
-					if (sensor.getVisaoIdentificacao()[7] == 0 || sensor.getVisaoIdentificacao()[7] == 100
-							|| sensor.getVisaoIdentificacao()[7] == 110) {
-						cooldown = cooldownValue;
-					}
-					break;
-
-				case 2:
-					if (sensor.getVisaoIdentificacao()[16] == 0 || sensor.getVisaoIdentificacao()[16] == 100
-							|| sensor.getVisaoIdentificacao()[16] == 110) {
-						cooldown = cooldownValue;
-					}
-					break;
-
-				case 3:
-					if (sensor.getVisaoIdentificacao()[11] == 0 || sensor.getVisaoIdentificacao()[11] == 100
-							|| sensor.getVisaoIdentificacao()[11] == 110) {
-						cooldown = cooldownValue;
-					}
-					break;
-
-				case 4:
-					if (sensor.getVisaoIdentificacao()[12] == 0 || sensor.getVisaoIdentificacao()[12] == 100
-							|| sensor.getVisaoIdentificacao()[12] == 110) {
-						cooldown = cooldownValue;
-					}
-					break;
-				}
-			}
-		}
-
-		if (cooldown > 0) {
-			cooldown--;
-			return explorar();
-		}
-		
-		if(sensor.getVisaoIdentificacao()[7] == 100 || sensor.getVisaoIdentificacao()[7] == 110 && cooldown == 0) {
-			return 1;
-		}
-		if(sensor.getVisaoIdentificacao()[16] == 100 || sensor.getVisaoIdentificacao()[16] == 110 && cooldown == 0) {
-			return 2;
-		}
-		if(sensor.getVisaoIdentificacao()[11] == 100 || sensor.getVisaoIdentificacao()[11] == 110 && cooldown == 0) {
-			return 4;
-		}
-		if(sensor.getVisaoIdentificacao()[12] == 100 || sensor.getVisaoIdentificacao()[12] == 110 && cooldown == 0) {
-			return 3;
-		}
-
-		explorar *= 100;
-		outraAcao *= 100;
-
-		ArrayList<Integer> possibilidades = new ArrayList<Integer>();
-
-		int total = (int) explorar + (int) outraAcao;
-
-		for (int i = 0; i < total; i++) {
-			if (explorar > 0) {
-				possibilidades.add(0);
-				explorar--;
-			} else if (outraAcao > 0) {
-				possibilidades.add(1);
-				outraAcao--;
-			}
-		}
-
-		Collections.shuffle(possibilidades);
-		if (possibilidades.get(0) == 0) {
-			move = explorar();
-		} else {
-			move = outraAcao();
-		}
-
-		movimentoAnterior = move;
-		return move;
+		return 0;
+//		p = sensor.getPosicao();
+//
+//		pesos[p.y][p.x] += 1;
+//
+//		chance = 0;
+//		outraAcao = 0;
+//		chanceJuntar = 0;
+//		explorar = 0;
+//		cima = 0;
+//		baixo = 0;
+//		esquerda = 0;
+//		direita = 0;
+//		total = 1;
+//		
+//		boolean juntar = false;
+//		for(int i = 0 ; i < sensor.getVisaoIdentificacao().length; i ++) {
+//			if(sensor.getVisaoIdentificacao()[i] != 200 && sensor.getVisaoIdentificacao()[i] != 210 && 
+//					sensor.getVisaoIdentificacao()[i] != 220 && sensor.getVisaoIdentificacao()[i] != 230) {
+//				juntar = true;
+//				break;
+//			}
+//		}
+//		
+//		if(banco.x != -1 && banco.y != -1) {
+//			double sub1 = banco.getX() - p.getX();
+//			double sub2 = banco.getY() - p.getY();
+//			if(sub1 == 0) {
+//				sub1 = 1;
+//			}
+//			
+//			if(sub2 == 0) {
+//				sub2 = 1;
+//			}
+//			
+//			chanceBancoX = 1 - (1/Math.abs(sub1));
+//			chanceBancoY = 1 - (1/Math.abs(sub2));
+//			chanceBancoSoma = chanceBancoX + chanceBancoY;
+//		}
+//
+//		int cont = 0;
+//		for (int i = -2; i <= 2; i++) {
+//			for (int j = -2; j <= 2; j++) {
+//				try {
+//					if (i == 0 && j == 0) {
+//
+//					} else {
+//						conhecimento[p.y + i][p.x + j] = sensor.getVisaoIdentificacao()[cont];
+//						
+//						if(sensor.getVisaoIdentificacao()[cont] == 3) {
+//							banco.y = p.y + i;
+//							banco.x = p.x + j;
+//						}
+//
+//						if (sensor.getVisaoIdentificacao()[cont] == 100
+//								|| sensor.getVisaoIdentificacao()[cont] == 110) {
+//							outraAcao += 2;
+//						}
+//
+//						cont++;
+//					}
+//				} catch (Exception e) {
+//
+//				}
+//			}
+//		}
+//		
+//		
+//
+//		for (int i = 0; i < sensor.getAmbienteOlfatoPoupador().length; i++) {
+//			if (sensor.getAmbienteOlfatoPoupador()[i] == 1) {
+//				outraAcao += 1.8;
+//			}
+//
+//			if (sensor.getAmbienteOlfatoPoupador()[i] == 2) {
+//				outraAcao += 1.6;
+//			}
+//
+//			if (sensor.getAmbienteOlfatoPoupador()[i] == 3) {
+//				outraAcao += 1.2;
+//			}
+//
+//			if (sensor.getAmbienteOlfatoPoupador()[i] == 4) {
+//				outraAcao += 1;
+//			}
+//			
+//			if (sensor.getAmbienteOlfatoPoupador()[i] == 5) {
+//				outraAcao += 0.8;
+//			}
+//		}
+//
+//		if (outraAcao > 3) {
+//			outraAcao = 2.95;
+//		}
+//
+//		explorar = 1 - outraAcao;
+//		
+//		if (moedas < sensor.getNumeroDeMoedas()) {
+//			cooldown = cooldownValue;
+//			moedas = sensor.getNumeroDeMoedas();
+//		}
+//
+//		if (posAnterior.x != p.x || posAnterior.y != p.y) {
+//			posAnterior.x = p.x;
+//			posAnterior.y = p.y;
+//		} else {
+//			if (movimentoAnterior != 0) {
+//				switch (movimentoAnterior) {
+//				case 1:
+//					if (sensor.getVisaoIdentificacao()[7] == 0 || sensor.getVisaoIdentificacao()[7] == 100
+//							|| sensor.getVisaoIdentificacao()[7] == 110) {
+//						cooldown = cooldownValue;
+//					}
+//					break;
+//
+//				case 2:
+//					if (sensor.getVisaoIdentificacao()[16] == 0 || sensor.getVisaoIdentificacao()[16] == 100
+//							|| sensor.getVisaoIdentificacao()[16] == 110) {
+//						cooldown = cooldownValue;
+//					}
+//					break;
+//
+//				case 3:
+//					if (sensor.getVisaoIdentificacao()[11] == 0 || sensor.getVisaoIdentificacao()[11] == 100
+//							|| sensor.getVisaoIdentificacao()[11] == 110) {
+//						cooldown = cooldownValue;
+//					}
+//					break;
+//
+//				case 4:
+//					if (sensor.getVisaoIdentificacao()[12] == 0 || sensor.getVisaoIdentificacao()[12] == 100
+//							|| sensor.getVisaoIdentificacao()[12] == 110) {
+//						cooldown = cooldownValue;
+//					}
+//					break;
+//				}
+//			}
+//		}
+//
+//		if (cooldown > 0) {
+//			cooldown--;
+//			return explorar();
+//		}
+//		
+//		if(sensor.getVisaoIdentificacao()[7] == 100 || sensor.getVisaoIdentificacao()[7] == 110 && cooldown == 0) {
+//			return 1;
+//		}
+//		if(sensor.getVisaoIdentificacao()[16] == 100 || sensor.getVisaoIdentificacao()[16] == 110 && cooldown == 0) {
+//			return 2;
+//		}
+//		if(sensor.getVisaoIdentificacao()[11] == 100 || sensor.getVisaoIdentificacao()[11] == 110 && cooldown == 0) {
+//			return 4;
+//		}
+//		if(sensor.getVisaoIdentificacao()[12] == 100 || sensor.getVisaoIdentificacao()[12] == 110 && cooldown == 0) {
+//			return 3;
+//		}
+//
+//		explorar *= 100;
+//		outraAcao *= 100;
+//
+//		ArrayList<Integer> possibilidades = new ArrayList<Integer>();
+//
+//		int total = (int) explorar + (int) outraAcao;
+//
+//		for (int i = 0; i < total; i++) {
+//			if (explorar > 0) {
+//				possibilidades.add(0);
+//				explorar--;
+//			} else if (outraAcao > 0) {
+//				possibilidades.add(1);
+//				outraAcao--;
+//			}
+//		}
+//
+//		Collections.shuffle(possibilidades);
+//		if (possibilidades.get(0) == 0) {
+//			move = explorar();
+//		} else {
+//			move = outraAcao();
+//		}
+//
+//		movimentoAnterior = move;
+//		return move;
 	}
 
 	public int explorar() {

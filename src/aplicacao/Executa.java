@@ -35,17 +35,17 @@ function sucessor(estado_atual){
 
 function calcular_custo(Possibilidade p){
 	int peso = 0
-		//ao ver um ladrão o peso diminui drasticamente
-		peso = calculo_do_fator_visão(p)
-		
-		//ao cheirar um ladrão o peso diminui de acordo com o tempo do cheiro, quanto maior o tempo menor a diminuição
-		peso += calculo_do_fator_olfato(p)
-		
-		//quanto tempo faz que ele não visita uma região
-		//alguma moeda deixada pra trás naquela direção
-		peso += calculo_do_fator_exploração(p)
-		
-		return 3-tupla => {peso, ação, posicao}
+	//ao ver um ladrão o peso diminui drasticamente
+	peso = calculo_do_fator_visão(p)
+	
+	//ao cheirar um ladrão o peso diminui de acordo com o tempo do cheiro, quanto maior o tempo menor a diminuição
+	peso += calculo_do_fator_olfato(p)
+	
+	//quanto tempo faz que ele não visita uma região
+	//alguma moeda deixada pra trás naquela direção
+	peso += calculo_do_fator_exploração(p)
+	
+	return 3-tupla => {peso, ação, posicao}
 }
 
 function calculo_do_fator_visão(Possibilidade p){
