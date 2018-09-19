@@ -140,6 +140,10 @@ public class Poupador extends ProgramaPoupador {
 		return escaping && money > POWER_UP_PRICE;
 	}
 	
+	private boolean haveMoney() {
+		return money > 0;
+	}
+	
 	private List<State> getStateSuccessors(Point point){
 		List<State> validStates = new ArrayList<State>();
 		
@@ -186,9 +190,33 @@ public class Poupador extends ProgramaPoupador {
 		
 		int[][] actionMatrix = Util.cutVision(vision, s.getAction());
 		
+		Point position = null;
+		
+		switch(s.getAction()) {
+			case UP:
+				position = new Point(2, 1);
+				break;
+				
+			case DOWN:
+				position = new Point(2, 0);			
+				break;
+				
+			case RIGHT:
+				position = new Point(0, 2);		
+				break;
+				
+			case LEFT:
+				position = new Point(1, 2);		
+				break;
+			default:
+				break;
+		}
+		
 		for(int i =0; i < actionMatrix.length; i++) {
 			for(int j = 0; j < actionMatrix[i].length; j++) {
 				int cell = actionMatrix[i][j];
+				
+				if(cell == 0) continue;
 				
 				if(cell > EMapCode.THIEF.getValue()){
 					cell = EMapCode.THIEF.getValue();
@@ -196,12 +224,12 @@ public class Poupador extends ProgramaPoupador {
 					cell = EMapCode.SAVER.getValue();
 				}
 				
-				double distance = Util.getDistance(currentPosition, j, i) + 1;
+				double distance = Util.getDistance(position, j, i);
 				
 				if(distance == 0) {
 					weight += identifyWeightByCode(cell);
 				}else {
-					weight += identifyWeightByCode(cell) / distance;					
+					weight += identifyWeightByCode(cell) - distance;					
 				}				
 			}
 		}		
@@ -215,7 +243,9 @@ public class Poupador extends ProgramaPoupador {
 		if(mapObject == null) System.out.println(cell);
 		
 		if(mapObject.getValue() == EMapCode.BANK.getValue()) {
-			return EGameObjectWeight.BANK.getValue();
+			if(haveMoney()) {
+				return EGameObjectWeight.BANK.getValue();				
+			}
 			
 		}else if(mapObject.getValue() == EMapCode.COIN.getValue()) {
 			return EGameObjectWeight.COIN.getValue();
@@ -264,7 +294,7 @@ class Util {
 		return cutMatrix(vision, m, n, i ,j);
 	}
 	
-	public static int[][] cutMatrix(int[][] matrix, int m, int n, int i, int j){
+	private static int[][] cutMatrix(int[][] matrix, int m, int n, int i, int j){
 		int [][] newMatrix = new int [m][n];
 		
 		for(int count_i = 0; count_i < m; count_i++, i++) {
@@ -281,7 +311,7 @@ class Util {
 	}
 	
 	public static boolean isInMap(int [][] map, int y, int x) {
-		return map.length > y && map[y].length > x &&
+		return map.length > y && map[0].length > x &&
 				y >= 0 && x >= 0;
 	}
 	
@@ -456,14 +486,14 @@ enum EMapCode{
 }
 
 enum EGameObjectWeight{
-	COIN			(10), 
+	COIN			(30), 
 	POWER_UP		(50), 
-	THIEF			(-200), 
+	THIEF			(-400), 
 	SAVER			(0), 
 	BANK			(200),
 	OUT_MAP			(-1),  
 	NO_VISION		(-2), 
-	WALL			(-5);
+	WALL			(-1);
 	
 //	UNKNOW_CELL		(-5), 
 	
