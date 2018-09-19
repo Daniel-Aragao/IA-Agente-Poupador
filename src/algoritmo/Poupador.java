@@ -48,6 +48,8 @@ public class Poupador extends ProgramaPoupador {
 			s.setWeight(getStateWeight(s));
 		}
 		
+		Collections.shuffle(newPossibleStates);
+		
 		Collections.sort(newPossibleStates, State.comparator());
 		
 		if(!newPossibleStates.isEmpty()) {
@@ -80,11 +82,11 @@ public class Poupador extends ProgramaPoupador {
 		currentPosition = sensor.getPosicao();
 		
 		vision = Util.getSensorArrayAsMatrix(sensor.getVisaoIdentificacao(), VISION_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
-		smell = Util.getSensorArrayAsMatrix(sensor.getAmbienteOlfatoPoupador(), SMELL_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
+		smell = Util.getSensorArrayAsMatrix(sensor.getAmbienteOlfatoLadrao(), SMELL_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
 		
 		money = sensor.getNumeroDeMoedas();
 		
-		fillVisualMap(vision);		
+		fillVisualMap(vision);
 		
 		escaping = seeingThief();
 	}
@@ -137,7 +139,7 @@ public class Poupador extends ProgramaPoupador {
 	}
 	
 	private boolean shouldIBuyThePowerUp() {
-		return escaping && money > POWER_UP_PRICE;
+		return escaping && money > POWER_UP_PRICE && sensor.getNumeroJogadasImunes() == 0;
 	}
 	
 	private boolean haveMoney() {
@@ -183,34 +185,24 @@ public class Poupador extends ProgramaPoupador {
 	private float calcSmellWeight(State s) {
 		float weight = 0;
 		
-		weight += getCostAction(s);
+//		weight += getCostAction(s);
+		switch(s.getAction()) {
+		case UP: for (int i = 0; i < smell.length; i++) weight += smell[0][i];
+			break;
+			
+		case DOWN: for (int i = 0; i < smell.length; i++) weight += smell[2][i];
+			break;
+			
+		case RIGHT: for (int i = 0; i < smell.length; i++) weight += smell[i][2];
+			break;
+			
+		case LEFT: for (int i = 0; i < smell.length; i++) weight += smell[i][0];
+			break;
+		default:
+			break;
+		}
 		
 		return weight*(-1);
-	}
-	
-	private float getCostAction(State s) {
-		
-		float cost = 0;
-		
-		switch(s.getAction()) {
-			case UP:
-				for (int i = 0; i < smell.length; i++) cost += smell[0][i];
-				break;
-				
-			case DOWN:
-				for (int i = 0; i < smell.length; i++) cost += smell[2][i];
-				break;
-				
-			case RIGHT:
-				for (int i = 0; i < smell.length; i++) cost += smell[i][2];
-				break;
-				
-			case LEFT: for (int i = 0; i < smell.length; i++) cost += smell[i][0];
-				break;
-			default:
-				break;
-		}
-		return cost;
 	}
 	
 	private double calcVisionWeight(State s) {
@@ -257,7 +249,7 @@ public class Poupador extends ProgramaPoupador {
 				if(distance == 0) {
 					weight += identifyWeightByCode(cell);
 				}else {
-					weight += identifyWeightByCode(cell) - distance;					
+					weight += identifyWeightByCode(cell) / distance;					
 				}				
 			}
 		}		
@@ -514,14 +506,14 @@ enum EMapCode{
 }
 
 enum EGameObjectWeight{
-	COIN			(30), 
+	COIN			(40), 
 	POWER_UP		(50), 
 	THIEF			(-400), 
 	SAVER			(0), 
 	BANK			(200),
-	OUT_MAP			(-1),  
+	OUT_MAP			(0),  
 	NO_VISION		(-2), 
-	WALL			(-1);
+	WALL			(-2);
 	
 //	UNKNOW_CELL		(-5), 
 	
