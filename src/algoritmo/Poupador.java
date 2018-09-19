@@ -181,37 +181,36 @@ public class Poupador extends ProgramaPoupador {
 	}
 
 	private float calcSmellWeight(State s) {
-		double weight = 0;
+		float weight = 0;
 		
+		weight += getCostAction(s);
 		
-		
-		return 0;
+		return weight*(-1);
 	}
 	
 	private float getCostAction(State s) {
-
-		Point position = null;
+		
+		float cost = 0;
 		
 		switch(s.getAction()) {
 			case UP:
-				position = new Point(2, 1);
+				for (int i = 0; i < smell.length; i++) cost += smell[0][i];
 				break;
 				
 			case DOWN:
-				position = new Point(2, 0);			
+				for (int i = 0; i < smell.length; i++) cost += smell[2][i];
 				break;
 				
 			case RIGHT:
-				position = new Point(0, 2);		
+				for (int i = 0; i < smell.length; i++) cost += smell[i][2];
 				break;
 				
-			case LEFT:
-				position = new Point(1, 2);		
+			case LEFT: for (int i = 0; i < smell.length; i++) cost += smell[i][0];
 				break;
 			default:
 				break;
 		}
-		return 0;
+		return cost;
 	}
 	
 	private double calcVisionWeight(State s) {
@@ -308,7 +307,7 @@ class Util {
 	}
 	
 	public static double getDistance(Point a, Point b) {
-		return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
+		return Math.abs(b.x - a.x) + Math.abs(b.y - a.y); //Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
 	}
 	
 	public static int[][] cutVision(int [][] vision, EAction action){
