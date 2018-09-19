@@ -279,7 +279,7 @@ class Util {
 	}
 	
 	public static double getDistance(Point a, Point b) {
-		return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
+		return Math.abs(b.x - a.x) + Math.abs(b.y - a.y); //Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
 	}
 	
 	public static int[][] cutVision(int [][] vision, EAction action){
