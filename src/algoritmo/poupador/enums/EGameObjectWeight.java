@@ -5,7 +5,7 @@ public enum EGameObjectWeight{
 	POWER_UP		(50), 
 	THIEF			(-400), 
 	SAVER			(0), 
-	BANK			(200),
+	BANK			(400),
 	OUT_MAP			(0),  
 	NO_VISION		(0), 
 	UNKNOW_CELL		(1), 

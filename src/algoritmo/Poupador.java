@@ -30,6 +30,7 @@ public class Poupador extends ProgramaPoupador {
 	private boolean firstIteration = true;
 	private Hashtable<Integer, Point> agentsMap;
 	private int[][] walkMemory;
+	private static Point bankPosition = new Point(8,8);
 	
 	private void instanciation() {
 		map = new int[MAP_M][MAP_N];
@@ -44,6 +45,7 @@ public class Poupador extends ProgramaPoupador {
 				map[i][j] = EMapCode.UNKNOW_CELL.getValue();
 			}
 		}
+		map[bankPosition.y][bankPosition.x] = EMapCode.BANK.getValue();
 	}
 
 	public int acao() {
@@ -167,7 +169,7 @@ public class Poupador extends ProgramaPoupador {
 		
 		for(State s : nextStates) {
 			if(Util.isInMap(map, s.getPosition())) {
-				if(Util.isWalkable(map, s.getPosition(), shouldIBuyThePowerUp())) {
+				if(Util.isWalkable(map, s.getPosition(), shouldIBuyThePowerUp(), haveMoney())) {
 					validStates.add(s);
 				}
 			}
@@ -183,43 +185,28 @@ public class Poupador extends ProgramaPoupador {
 		
 		for(int i = submatrix.i; i < submatrix.m; i++) {
 			for(int j = submatrix.j; j < submatrix.n; j++) {
-				int cell = map[i][j];
+				int cellMap = map[i][j];
+//				int cellWalkMemory = walkMemory[i][j];
 
-				if(cell == 0) continue;
-				
-				double distance = Util.getDistance(s.getPosition(), j, i);
-				
-				double iterationWeight = identifyWeightByCode(cell) / 10;
-				
-				if(distance == 0) {
-					weight += iterationWeight ;
-				}else {
-					weight += iterationWeight  / distance;					
-				}	
-			}
-		}
-//		walkMemory
-		return weight;
-	}
-	
-	private EAction getDecisionAction(Point obj1, Point obj2) {
-		if(obj1.getY() > obj2.getY()){
-			return EAction.LEFT;
-		}
-		else {
-			if(obj1.getY() < obj2.getY()) {
-				return EAction.RIGHT;
-			}
-			else {
-				if(obj1.getX() > obj2.getX()) {
-					return EAction.UP;
+				if(cellMap != 0) {
+					double distance = Util.getDistance(s.getPosition(), j, i);
+					
+					double iterationWeight = identifyWeightByCode(cellMap) / 10;
+					
+					if(distance == 0) {
+						weight += iterationWeight ;
+					}else {
+						weight += iterationWeight  / distance;
+					}
 				}
-				else {
-					return EAction.DOWN;
-				}
+				
+//				weight -= cellWalkMemory;
 			}
 		}
 		
+		weight -= walkMemory[s.getPosition().y][s.getPosition().x];
+
+		return weight;
 	}
 	
 	private float calcSmellWeight(State s) {
@@ -328,8 +315,10 @@ public class Poupador extends ProgramaPoupador {
 		}else if(mapObject.getValue() == EMapCode.UNKNOW_CELL.getValue()) {
 			return EGameObjectWeight.UNKNOW_CELL.getValue();
 			
+		}else if(mapObject.getValue() == EMapCode.SAVER.getValue()){
 		}else {
-			System.out.println("Unidentified code");
+			System.out.println("Unidentified code: "+cell);
+			
 		}
 		
 		return 0;

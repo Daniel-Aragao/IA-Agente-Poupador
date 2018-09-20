@@ -71,6 +71,26 @@ public class Util {
 		return newMatrix;
 	}
 	
+	public static EAction getDecisionAction(Point agent, Point obj) {
+		if(agent.getY() > obj.getY()){
+			return EAction.UP;
+		}
+		else {
+			if(agent.getY() < obj.getY()) {
+				return EAction.DOWN;
+			}
+			else {
+				if(agent.getX() > obj.getX()) {
+					return EAction.LEFT;
+				}
+				else {
+					return EAction.RIGHT;
+				}
+			}
+		}
+		
+	}
+	
 	public static boolean isInMap(int [][] map, Point point) {
 		return isInMap(map, point.y, point.x);
 	}
@@ -80,17 +100,17 @@ public class Util {
 				y >= 0 && x >= 0;
 	}
 	
-	public static boolean isWalkable(int [][] map, Point point, boolean payment) {
-		return isWalkable(map, point.y, point.x, payment);
+	public static boolean isWalkable(int [][] map, Point point, boolean payment, boolean haveMoney) {
+		return isWalkable(map, point.y, point.x, payment, haveMoney);
 	}
 	
-	public static boolean isWalkable(int [][] map, int y, int x, boolean payment) {
+	public static boolean isWalkable(int [][] map, int y, int x, boolean payment, boolean haveMoney) {
 		int cell = map[y][x];
 		
 		return 	cell == EMapCode.FLOOR.getValue() 	 ||
 				cell == EMapCode.COIN.getValue() 	 ||
 				(payment && cell == EMapCode.POWER_UP.getValue()) ||
-				cell == EMapCode.BANK.getValue();
+				(haveMoney && cell == EMapCode.BANK.getValue());
 	}
 	
 	public static void printMatrix(int[][] array) {
