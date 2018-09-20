@@ -3,10 +3,16 @@ package algoritmo;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map.Entry;
+
+import algoritmo.poupador.State;
+import algoritmo.poupador.SubMatrix;
+import algoritmo.poupador.Util;
+import algoritmo.poupador.enums.EAction;
+import algoritmo.poupador.enums.EGameObjectWeight;
+import algoritmo.poupador.enums.EMapCode;
 
 public class Poupador extends ProgramaPoupador {
 	private static final int VISION_MATRIX_SIZE = 5;
@@ -23,11 +29,13 @@ public class Poupador extends ProgramaPoupador {
 	private Point currentPosition;
 	private boolean firstIteration = true;
 	private Hashtable<Integer, Point> agentsMap;
+	private int[][] walkMemory;
 	
 	private void instanciation() {
 		map = new int[MAP_M][MAP_N];
 		undiscoverMap();
 		firstIteration = false;
+		walkMemory = new int[MAP_M][MAP_N];
 	}
 
 	private void undiscoverMap() {
@@ -57,17 +65,16 @@ public class Poupador extends ProgramaPoupador {
 		}
 		
 		return EAction.STOP.getValue(); 
-
-//		Util.printMatrix(map);
-
-//		int [] olfato = sensor.getAmbienteOlfatoPoupador();
+	}
+	
+	private double getStateWeight(State s) {
+		double weight = 0;
 		
-//		fillSafeZone(Util.getSensorArrayAsMatrix(olfato, SMELL_MATRIX_SIZE, 0));
-
-//		Util.printSensorArrayAsMatrix(visao, VISION_MATRIX_SIZE);
-//		System.out.println();
+		weight = calcVisionWeight(s);
+		weight += calcSmellWeight(s);
+		weight += calcExplorationWeight(s);
 		
-//		return (int) (Math.random() * 5);
+		return weight;
 	}
 
 	private void updateMap() {
@@ -80,6 +87,7 @@ public class Poupador extends ProgramaPoupador {
 		agentsMap = new Hashtable<Integer, Point>();
 
 		currentPosition = sensor.getPosicao();
+		walkMemory[currentPosition.y][currentPosition.x] += 1;
 		
 		vision = Util.getSensorArrayAsMatrix(sensor.getVisaoIdentificacao(), VISION_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
 		smell = Util.getSensorArrayAsMatrix(sensor.getAmbienteOlfatoLadrao(), SMELL_MATRIX_SIZE, EMapCode.SELF_POSITION.getValue());
@@ -87,6 +95,7 @@ public class Poupador extends ProgramaPoupador {
 		money = sensor.getNumeroDeMoedas();
 		
 		fillVisualMap(vision);
+		
 		
 		escaping = seeingThief();
 	}
@@ -97,7 +106,7 @@ public class Poupador extends ProgramaPoupador {
 			
 			if(agentKey >= EMapCode.THIEF.getValue()) {
 				return true;
-			}			
+			}
 		}
 		
 		return false;
@@ -166,36 +175,43 @@ public class Poupador extends ProgramaPoupador {
 		
 		return validStates;
 	}
-	
-	private double getStateWeight(State s) {
+
+	private double calcExplorationWeight(State s) {
 		double weight = 0;
 		
-		weight = calcVisionWeight(s);
-		weight += calcSmellWeight(s);
-		weight += calcExplorationWeight(s);
+		SubMatrix submatrix = Util.cutMatrix(map, currentPosition, s.getAction());
 		
-		return weight;
-	}
+		for(int i = submatrix.i; i < submatrix.m; i++) {
+			for(int j = submatrix.j; j < submatrix.n; j++) {
+				int cell = map[i][j];
 
-	private float calcExplorationWeight(State s) {
-	
-		return 0;
+				if(cell == 0) continue;
+				
+				double distance = Util.getDistance(s.getPosition(), j, i);
+				
+				double iterationWeight = identifyWeightByCode(cell) / 10;
+				
+				if(distance == 0) {
+					weight += iterationWeight ;
+				}else {
+					weight += iterationWeight  / distance;					
+				}	
+			}
+		}
+//		walkMemory
+		return weight;
 	}
 
 	private float calcSmellWeight(State s) {
 		float weight = 0;
-		
-//		weight += getCostAction(s);
+
 		switch(s.getAction()) {
 		case UP: for (int i = 0; i < smell.length; i++) weight += smell[0][i];
-			break;
-			
+			break;			
 		case DOWN: for (int i = 0; i < smell.length; i++) weight += smell[2][i];
-			break;
-			
+			break;			
 		case RIGHT: for (int i = 0; i < smell.length; i++) weight += smell[i][2];
-			break;
-			
+			break;			
 		case LEFT: for (int i = 0; i < smell.length; i++) weight += smell[i][0];
 			break;
 		default:
@@ -238,12 +254,6 @@ public class Poupador extends ProgramaPoupador {
 				
 				if(cell == 0) continue;
 				
-				if(cell > EMapCode.THIEF.getValue()){
-					cell = EMapCode.THIEF.getValue();
-				}else if(cell > EMapCode.SAVER.getValue()) {
-					cell = EMapCode.SAVER.getValue();
-				}
-				
 				double distance = Util.getDistance(position, j, i);
 				
 				if(distance == 0) {
@@ -257,7 +267,15 @@ public class Poupador extends ProgramaPoupador {
 		return weight;
 	}
 	
-	private float identifyWeightByCode(int cell) {
+	private float identifyWeightByCode(int cell) {		
+		if(cell == 0) return 0;
+		
+		if(cell > EMapCode.THIEF.getValue()){
+			cell = EMapCode.THIEF.getValue();
+		}else if(cell > EMapCode.SAVER.getValue()) {
+			cell = EMapCode.SAVER.getValue();
+		}
+		
 		EMapCode mapObject = EMapCode.fromValue(cell);
 		
 		if(mapObject == null) System.out.println(cell);
@@ -287,256 +305,21 @@ public class Poupador extends ProgramaPoupador {
 		}else if(mapObject.getValue() == EMapCode.WALL.getValue()) {
 			return EGameObjectWeight.WALL.getValue();
 			
+		}else if(mapObject.getValue() == EMapCode.UNKNOW_CELL.getValue()) {
+			return EGameObjectWeight.UNKNOW_CELL.getValue();
+			
+		}else {
+			System.out.println("Unidentified code");
 		}
 		
 		return 0;
 	}
 }
 
-class Util {	
-	public static double getDistance(Point a, int x, int y) {
-		return getDistance(a, new Point(x,y));
-	}
-	
-	public static double getDistance(Point a, Point b) {
-		return Math.abs(b.x - a.x) + Math.abs(b.y - a.y); //Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
-	}
-	
-	public static int[][] cutVision(int [][] vision, EAction action){
-		int m = (action.getValue() == EAction.UP.getValue() || EAction.DOWN.getValue() == action.getValue()) ? 2 : 5;
-		int n = (m == 5) ? 2 : 5;		
-		
-		// for up, left, right i starts in 0
-		int i = action.getValue() == EAction.DOWN.getValue() ? 3 : 0;
-		// for up, left, down j starts in 0
-		int j = action.getValue() == EAction.RIGHT.getValue() ? 3 : 0;
-		
-		return cutMatrix(vision, m, n, i ,j);
-	}
-	
-	private static int[][] cutMatrix(int[][] matrix, int m, int n, int i, int j){
-		int [][] newMatrix = new int [m][n];
-		
-		for(int count_i = 0; count_i < m; count_i++, i++) {
-			for(int count_j = 0, variable_j = j; count_j < n; count_j++, variable_j++) {
-				newMatrix[count_i][count_j] = matrix[i][variable_j];
-			}
-		}
-		
-		return newMatrix;
-	}
-	
-	public static boolean isInMap(int [][] map, Point point) {
-		return isInMap(map, point.y, point.x);
-	}
-	
-	public static boolean isInMap(int [][] map, int y, int x) {
-		return map.length > y && map[0].length > x &&
-				y >= 0 && x >= 0;
-	}
-	
-	public static boolean isWalkable(int [][] map, Point point, boolean payment) {
-		return isWalkable(map, point.y, point.x, payment);
-	}
-	
-	public static boolean isWalkable(int [][] map, int y, int x, boolean payment) {
-		int cell = map[y][x];
-		
-		return 	cell == EMapCode.FLOOR.getValue() 	 ||
-				cell == EMapCode.COIN.getValue() 	 ||
-				(payment && cell == EMapCode.POWER_UP.getValue()) ||
-				cell == EMapCode.BANK.getValue();
-	}
-	
-	public static void printMatrix(int[][] array) {
-		for (int i = 0; i < array.length; i++) {
-			for (int j = 0; j < array[i].length; j++) {
-				System.out.printf("%5d", array[i][j]);
-			}
-			System.out.println();
-		}
-	}
 
-	public static void printSensorArrayAsMatrix(int[] array, int m) {
-		int n = (array.length + 1) / m;
 
-		int i_center = (int) Math.ceil(m / 2.0) - 1;
-		int j_center = (int) Math.ceil(n / 2.0) - 1;
 
-		int offset = 0;
-		for (int i = 0; i < m; i++) {
 
-			for (int j = 0; j < n; j++) {
-				if (i_center == i && j_center == j) {
-					offset = 1;
-					System.out.printf("     ");
-					continue;
-				}
-
-				System.out.printf("%5d", array[i * n + j - offset]);// i*n+j);
-			}
-
-			System.out.println();
-		}
-	}
-
-	public static int[][] getSensorArrayAsMatrix(int[] array, int m, int centerValue) {
-		int n = (array.length + 1) / m;
-		int[][] matrix = new int[m][n];
-
-		int i_center = (int) Math.ceil(m / 2.0) - 1;
-		int j_center = (int) Math.ceil(n / 2.0) - 1;
-
-		int offset = 0;
-		for (int i = 0; i < m; i++) {
-
-			for (int j = 0; j < n; j++) {
-				if (i_center == i && j_center == j) {
-					offset = 1;
-					matrix[i][j] = centerValue;
-					continue;
-				}
-
-				matrix[i][j] = array[i * n + j - offset];
-			}
-		}
-
-		return matrix;
-	}
-}
-
-class GameObject{
-	private EGameObjectWeight weight;
-	private float distance = 0;
-
-	GameObject(EGameObjectWeight weight, float distance){ 
-		this.weight = weight; 
-		this.distance = distance; 
-	}
-	
-	public EGameObjectWeight getWeight() { return this.weight; }
-	public float getDistance() { return this.distance; }
-}
-
-class State{
-	private EAction action;
-	private Point position;
-	private double weight = 0;
-	
-	public State(EAction action, Point position) {
-		this.action = action;
-		this.position = position;
-	}
-
-	public EAction getAction() { return action; }
-
-	public Point getPosition() { return position; }
-
-	public double getWeight() { return weight; }
-	public void setWeight(double weight) { this.weight = weight; }
-
-	public static Comparator<State> comparator() {
-		return new Comparator<State>() {			
-			public int compare(State state0, State state1) {
-				double weight0 = state0.getWeight();
-				double weight1 = state1.getWeight();
-				
-				return weight0 > weight1 ? 1 : weight0 < weight1 ? -1 : 0;
-			}
-		};
-	}
-}
-
-enum EAction{
-	STOP(0), UP(1), DOWN(2), RIGHT(3), LEFT(4);
-	
-	private int value;
-	
-	EAction(int value){
-		this.value = value;
-	}
-	
-	public static EAction fromValue(int id) {
-		for(EAction e : EAction.values()){
-			if(e.value == id){
-				return e;
-			}
-		}
-		
-		return null;
-	}
-	
-	public int getValue() {
-		return value;
-	}
-}
-
-enum EMapCode{
-	UNKNOW_CELL		(-5), 
-	NO_VISION		(-2), 
-	OUT_MAP			(-1), 
-	FLOOR			(0), 
-	WALL			(1), 
-	SELF_POSITION	(2), 
-	BANK			(3), 
-	COIN			(4), 
-	POWER_UP		(5), 
-	SAVER			(100), 
-	THIEF			(200);
-	
-	private int value;
-	
-	EMapCode(int value){
-		this.value = value;
-	}
-	
-	public static EMapCode fromValue(int id) {
-		for(EMapCode e : EMapCode.values()){
-			if(e.value == id){
-				return e;
-			}
-		}
-		
-		return null;
-	}
-	
-	public int getValue() {
-		return value;
-	}
-}
-
-enum EGameObjectWeight{
-	COIN			(40), 
-	POWER_UP		(50), 
-	THIEF			(-400), 
-	SAVER			(0), 
-	BANK			(200),
-	OUT_MAP			(0),  
-	NO_VISION		(-2), 
-	WALL			(-2);
-	
-//	UNKNOW_CELL		(-5), 
-	
-	private float value;
-	
-	EGameObjectWeight(float value){
-		this.value = value;
-	}
-	
-	public static EGameObjectWeight fromValue(int id) {
-		for(EGameObjectWeight e : EGameObjectWeight.values()){
-			if(e.value == id){
-				return e;
-			}
-		}
-		
-		return null;
-	}
-	
-	public float getValue() {
-		return value;
-	}
-}
 
 
 
