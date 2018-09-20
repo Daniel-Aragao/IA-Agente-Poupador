@@ -201,7 +201,27 @@ public class Poupador extends ProgramaPoupador {
 //		walkMemory
 		return weight;
 	}
-
+	
+	private EAction getDecisionAction(Point obj1, Point obj2) {
+		if(obj1.getY() > obj2.getY()){
+			return EAction.LEFT;
+		}
+		else {
+			if(obj1.getY() < obj2.getY()) {
+				return EAction.RIGHT;
+			}
+			else {
+				if(obj1.getX() > obj2.getX()) {
+					return EAction.UP;
+				}
+				else {
+					return EAction.DOWN;
+				}
+			}
+		}
+		
+	}
+	
 	private float calcSmellWeight(State s) {
 		float weight = 0;
 
